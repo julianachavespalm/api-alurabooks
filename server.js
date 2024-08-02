@@ -55,7 +55,7 @@ server.post('/public/registrar', (req, res) => {
     fs.writeFile("./usuarios.json", JSON.stringify(json), (err) => {
       if (err) {
         const status = 401
-        const message = err
+        const message = err.message;
         res.status(status).json({ status, message })
         return
       }
@@ -332,29 +332,23 @@ server.get('/public/mais-vendidos', (req, res) => {
 })
 
 server.use(/^(?!\/(public|livros|autores|categorias)).*$/, (req, res, next) => {
-  if (req.headers.authorization === undefined || req.headers.authorization.split(' ')[0] !== 'Bearer') {
-    const status = 401
-    const message = 'Token inválido'
-    res.status(status).json({ status, message })
-    return
+  const authHeader = req.headers.authorization;
+  if (!authHeader || authHeader.split(' ')[0] !== 'Bearer') {
+    return res.status(401).json({ status: 401, message: 'Token inválido' });
   }
+  
+  const token = authHeader.split(' ')[1];
   try {
-    let verifyTokenResult;
-    verifyTokenResult = verifyToken(req.headers.authorization.split(' ')[1]);
-
-    if (verifyTokenResult instanceof Error) {
-      const status = 401
-      const message = 'Token de autenticação não encontrado'
-      res.status(status).json({ status, message })
-      return
+    const decoded = verifyToken(token);
+    if (decoded instanceof Error) {
+      return res.status(401).json({ status: 401, message: 'Token de autenticação não encontrado' });
     }
-    next()
+    next();
   } catch (err) {
-    const status = 401
-    const message = 'Token revogado'
-    res.status(status).json({ status, message })
+    res.status(401).json({ status: 401, message: 'Token revogado' });
   }
-})
+});
+
 
 server.use(router)
 
